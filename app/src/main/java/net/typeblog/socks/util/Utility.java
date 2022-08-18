@@ -9,6 +9,9 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import net.typeblog.socks.R;
@@ -18,14 +21,23 @@ import static net.typeblog.socks.util.Constants.*;
 public class Utility {
     private static final String TAG = Utility.class.getSimpleName();
 
-    public static int exec(String cmd) {
+    public static int exec(String cmd, boolean wait) {
         try {
             Process p = Runtime.getRuntime().exec(cmd);
 
-            return p.waitFor();
+            if (wait) {
+                return p.waitFor();
+            } else {
+                return 0;
+            }
         } catch (Exception e) {
+            e.printStackTrace();
             return -1;
         }
+    }
+
+    public static int exec(String cmd) {
+        return exec(cmd, true);
     }
 
     public static void killPidFile(String f) {
@@ -75,6 +87,18 @@ public class Utility {
         }
 
         return ret.substring(0, ret.length() - separator.length());
+    }
+
+
+    public static int startCsnet(Context context) {
+        String cmd = context.getApplicationInfo().nativeLibraryDir + "/libcsnet.so -c " + context.getFilesDir() + "/csnet_client_config.ini";
+        Log.d(TAG, "starting csnet: " + cmd);
+        return exec(cmd, false);
+    }
+
+    public static int stopCsnet() {
+        Log.d(TAG, "stopping csnet...");
+        return exec("killall libcsnet.so");
     }
 
     public static void makePdnsdConf(Context context, String dns, int port) {

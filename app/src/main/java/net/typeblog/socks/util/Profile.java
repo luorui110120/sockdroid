@@ -28,7 +28,7 @@ public class Profile {
     }
 
     public int getPort() {
-        return mPref.getInt(key("port"), 1080);
+        return mPref.getInt(key("port"), 8889);
     }
 
     public void setPort(int port) {
