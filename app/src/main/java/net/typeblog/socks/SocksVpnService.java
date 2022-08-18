@@ -72,7 +72,7 @@ public class SocksVpnService extends VpnService {
         // Notifications on Oreo and above need a channel
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= 26) {
-            String NOTIFICATION_CHANNEL_ID = "net.typeblog.socks";
+            String NOTIFICATION_CHANNEL_ID = getApplicationInfo().packageName;
             NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID,
                     getString(R.string.channel_name), NotificationManager.IMPORTANCE_NONE);
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
@@ -164,7 +164,7 @@ public class SocksVpnService extends VpnService {
         if (!perApp) {
             // Just bypass myself
             try {
-                b.addDisallowedApplication("net.typeblog.socks");
+                b.addDisallowedApplication(getApplicationInfo().packageName);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -172,7 +172,7 @@ public class SocksVpnService extends VpnService {
             if (bypass) {
                 // First, bypass myself
                 try {
-                    b.addDisallowedApplication("net.typeblog.socks");
+                    b.addDisallowedApplication(getApplicationInfo().packageName);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -189,7 +189,7 @@ public class SocksVpnService extends VpnService {
                 }
             } else {
                 for (String p : apps) {
-                    if (TextUtils.isEmpty(p) || p.trim().equals("net.typeblog.socks")) {
+                    if (TextUtils.isEmpty(p) || p.trim().equals(getApplicationInfo().packageName)) {
                         continue;
                     }
 
