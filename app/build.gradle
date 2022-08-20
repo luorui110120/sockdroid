@@ -6,8 +6,8 @@ android {
         applicationId "com.kongdao.socks"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 12
-        versionName "1.0.3"
+        versionCode 15
+        versionName "1.0.5"
     }
     buildTypes {
         release {

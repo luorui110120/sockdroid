@@ -38,4 +38,11 @@ public class Constants
             PREF_ADV_APP_BYPASS = "adv_app_bypass",
             PREF_ADV_APP_LIST = "adv_app_list_msel",
             PREF_ADV_AUTO_CONNECT = "adv_auto_connect";
+
+    public static final String INTENT_ARG_IP = "intent_ip",
+            INTENT_ARG_PORT="intent_port",
+            INTENT_ARG_START="intent_start",
+            INTENT_ARG_USER="intent_user",
+            INTENT_ARG_PASSWD="intent_passwd",
+            INTENT_ARG_PKG_LIST="intent_pkg_list";
 }

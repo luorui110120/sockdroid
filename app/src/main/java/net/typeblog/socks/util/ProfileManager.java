@@ -85,4 +85,10 @@ public class ProfileManager {
 
         return true;
     }
+    public Profile getTmpConfig() {
+        //removeProfile("tmpConfig");
+        Profile iret = new Profile(mPref, "tmpConfig");
+        iret.setAppList("");
+        return iret;
+    }
 }

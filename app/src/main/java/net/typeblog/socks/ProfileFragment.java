@@ -30,19 +30,24 @@ import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.Toast;
 
+import net.typeblog.socks.util.Constants;
+import net.typeblog.socks.util.LogUtils;
 import net.typeblog.socks.util.Profile;
 import net.typeblog.socks.util.ProfileManager;
 import net.typeblog.socks.util.Utility;
 
 import org.w3c.dom.Text;
 
+import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import static net.typeblog.socks.util.Constants.*;
@@ -96,10 +101,16 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
     private EditTextPreference mPrefUDPGW;
     private CheckBoxPreference mPrefUserpw, mPrefPerApp, mPrefAppBypass, mPrefIPv6, mPrefUDP, mPrefAuto;
     private Context context;
+    private Intent intent = null;
+    private boolean mStartFlags = false;
 
     public void setContext(Context context) {
         this.context = context;
     }
+    public void setIntent(Intent intent) {
+        this.intent = intent;
+    }
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -107,8 +118,59 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
         addPreferencesFromResource(R.xml.settings);
         setHasOptionsMenu(true);
         mManager = new ProfileManager(getActivity().getApplicationContext());
+
+        String ip = intent.getStringExtra(INTENT_ARG_IP);
+        int port = intent.getIntExtra(INTENT_ARG_PORT, 8889);
+        String user = intent.getStringExtra(INTENT_ARG_USER);
+        String passwd = intent.getStringExtra(INTENT_ARG_PASSWD);
+        String pkglist = intent.getStringExtra(INTENT_ARG_PKG_LIST);
+        mStartFlags = intent.getBooleanExtra(INTENT_ARG_START, false);
+
+        if(!TextUtils.isEmpty(ip)){
+            mProfile = mManager.getTmpConfig();
+            mProfile.setServer(ip);
+            LogUtils.e("ip:" + ip + ",prot:" + port + ", pkglist:" + pkglist + ",start:" + mStartFlags);
+            if (isDeviceInVPN()) {
+                mProfile = null;
+                mStartFlags =false;
+                Toast.makeText(context, "error: vpn已启动!!", Toast.LENGTH_LONG).show();
+            }
+        }
+        if(null != mProfile){
+            mProfile.setPort(port);
+        }
+        if(!TextUtils.isEmpty(pkglist) && null != mProfile){
+            mProfile.setIsPerApp(true);
+            mProfile.setAppList("");
+            mProfile.setAppList(pkglist.replace(",", "\n"));
+        }
+        else if(null != mProfile){
+            mProfile.setIsPerApp(false);
+            mProfile.setAppList("");
+        }
+        if(!TextUtils.isEmpty(user) && null != mProfile){
+            mProfile.setIsUserpw(true);
+            mProfile.setUsername(user);
+        }
+        else if(null != mProfile){
+            mProfile.setIsUserpw(false);
+            mProfile.setUsername("");
+        }
+        if(!TextUtils.isEmpty(passwd) && null != mProfile){
+            mProfile.setPassword(passwd);
+        }
+        else if(null != mProfile){
+            mProfile.setPassword("");
+        }
+
         initPreferences();
         reload();
+    }
+
+    @Override
+    public void onStart(){
+        super.onStart();
+
     }
 
     @Override
@@ -120,6 +182,10 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
         mSwitch = s.getActionView().findViewById(R.id.switch_action_button);
         mSwitch.setOnCheckedChangeListener(this);
         mSwitch.postDelayed(mStateRunnable, 1000);
+
+        if(mStartFlags){
+            startVpn();
+        }
         checkState();
     }
 
@@ -199,7 +265,7 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
             String appList = TextUtils.join("\n", newValues);
             mProfile.setAppList(appList);
             updateAppList();
-            Log.d("setAppList", "appList:\n" + mProfile.getAppList());
+            LogUtils.e("appList:\n" + mProfile.getAppList());
             return true;
         } else if (p == mPrefIPv6) {
             mProfile.setHasIPv6(Boolean.parseBoolean(newValue.toString()));
@@ -276,9 +342,10 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
 
     private void reload() {
         if (mProfile == null) {
+        //    LogUtils.e("mProfile == null");
             mProfile = mManager.getDefault();
         }
-
+        LogUtils.e(mProfile.getName());
         mPrefProfile.setEntries(mManager.getProfiles());
         mPrefProfile.setEntryValues(mManager.getProfiles());
         mPrefProfile.setValue(mProfile.getName());
@@ -311,6 +378,8 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
         Map<String, String> packages = getPackages();
         CharSequence[] titles = new CharSequence[packages.size()];
         CharSequence[] packageNames = new CharSequence[packages.size()];
+        ///用于设置选中的app;
+        Set<String> selectSet = new HashSet<String>();
 
         //--------------- 给应用列表排序 ---------------
         int i = 0;
@@ -321,6 +390,7 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
                 selectedAndExistsApps.add(entry.getValue());
                 packageNames[i] = entry.getValue();
                 titles[i] = entry.getKey();
+                selectSet.add(entry.getValue());
                 i++;
             }
         }
@@ -351,11 +421,9 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
             titles[i] = entry.getKey();
             i++;
         }
-
-
+        mPrefAppList.setValues(selectSet);
         mPrefAppList.setEntries(titles);
         mPrefAppList.setEntryValues(packageNames);
-
         // 更新存储的AppList（删掉了不存在的应用）
         mProfile.setAppList(TextUtils.join("\n", selectedAndExistsApps));
     }
@@ -577,5 +645,18 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
 
         getActivity().unbindService(mConnection);
         checkState();
+    }
+    public boolean isDeviceInVPN() {
+        try {
+            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nif : all) {
+                if (nif.getName().equals("tun0") || nif.equals("ppp0")) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
