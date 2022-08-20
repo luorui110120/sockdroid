@@ -119,6 +119,9 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
         setHasOptionsMenu(true);
         mManager = new ProfileManager(getActivity().getApplicationContext());
 
+        if(null == intent){
+            return ;
+        }
         String ip = intent.getStringExtra(INTENT_ARG_IP);
         int port = intent.getIntExtra(INTENT_ARG_PORT, 8889);
         String user = intent.getStringExtra(INTENT_ARG_USER);
@@ -163,14 +166,14 @@ public class ProfileFragment extends PreferenceFragment implements Preference.On
             mProfile.setPassword("");
         }
 
-        initPreferences();
-        reload();
+
     }
 
     @Override
     public void onStart(){
         super.onStart();
-
+        initPreferences();
+        reload();
     }
 
     @Override
